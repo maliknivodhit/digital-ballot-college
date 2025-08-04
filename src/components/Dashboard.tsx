@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Vote, Calendar, Users, BarChart3 } from "lucide-react";
+import { LogOut, Vote, Calendar, Users, BarChart3, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ElectionManagement } from "./admin/ElectionManagement";
 
 interface Election {
   id: string;
@@ -25,10 +27,12 @@ interface UserProfile {
 
 export const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const { role, isAdmin } = useRole();
   const { toast } = useToast();
   const [elections, setElections] = useState<Election[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -127,17 +131,35 @@ export const Dashboard = () => {
           <div>
             <h1 className="text-2xl font-bold">Digital Ballot College</h1>
             <p className="text-sm text-muted-foreground">
-              Welcome, {profile?.full_name || user?.email}
+              Welcome, {profile?.full_name || user?.email} {isAdmin && <Badge variant="secondary">Admin</Badge>}
             </p>
           </div>
-          <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button 
+                variant={showAdminPanel ? "default" : "outline"} 
+                onClick={() => setShowAdminPanel(!showAdminPanel)}
+                className="flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                {showAdminPanel ? "Student View" : "Admin Panel"}
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Admin Panel */}
+        {isAdmin && showAdminPanel ? (
+          <ElectionManagement />
+        ) : (
+          <>
+            {/* Student Dashboard Content */}
         {/* Profile Card */}
         {profile && (
           <Card>
@@ -245,32 +267,34 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardHeader className="text-center">
-              <Vote className="h-8 w-8 text-primary mx-auto mb-2" />
-              <CardTitle className="text-lg">My Votes</CardTitle>
-              <CardDescription>View your voting history</CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardHeader className="text-center">
-              <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-              <CardTitle className="text-lg">Candidates</CardTitle>
-              <CardDescription>View candidate profiles</CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardHeader className="text-center">
-              <BarChart3 className="h-8 w-8 text-primary mx-auto mb-2" />
-              <CardTitle className="text-lg">Results</CardTitle>
-              <CardDescription>Election results & analytics</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
+            {/* Quick Actions */}
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader className="text-center">
+                  <Vote className="h-8 w-8 text-primary mx-auto mb-2" />
+                  <CardTitle className="text-lg">My Votes</CardTitle>
+                  <CardDescription>View your voting history</CardDescription>
+                </CardHeader>
+              </Card>
+              
+              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader className="text-center">
+                  <Users className="h-8 w-8 text-primary mx-auto mb-2" />
+                  <CardTitle className="text-lg">Candidates</CardTitle>
+                  <CardDescription>View candidate profiles</CardDescription>
+                </CardHeader>
+              </Card>
+              
+              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader className="text-center">
+                  <BarChart3 className="h-8 w-8 text-primary mx-auto mb-2" />
+                  <CardTitle className="text-lg">Results</CardTitle>
+                  <CardDescription>Election results & analytics</CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
