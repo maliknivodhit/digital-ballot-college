@@ -8,6 +8,8 @@ import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ElectionManagement } from "./admin/ElectionManagement";
+import { CandidateManagement } from "./admin/CandidateManagement";
+import { VotingInterface } from "./voting/VotingInterface";
 
 interface Election {
   id: string;
@@ -33,6 +35,7 @@ export const Dashboard = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminView, setAdminView] = useState<"elections" | "candidates" | "results">("elections");
 
   useEffect(() => {
     fetchData();
@@ -156,7 +159,32 @@ export const Dashboard = () => {
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Admin Panel */}
         {isAdmin && showAdminPanel ? (
-          <ElectionManagement />
+          <div className="space-y-6">
+            <div className="flex gap-2 border-b">
+              <Button 
+                variant={adminView === "elections" ? "default" : "ghost"}
+                onClick={() => setAdminView("elections")}
+              >
+                Elections
+              </Button>
+              <Button 
+                variant={adminView === "candidates" ? "default" : "ghost"}
+                onClick={() => setAdminView("candidates")}
+              >
+                Candidates
+              </Button>
+              <Button 
+                variant={adminView === "results" ? "default" : "ghost"}
+                onClick={() => setAdminView("results")}
+              >
+                Results
+              </Button>
+            </div>
+            
+            {adminView === "elections" && <ElectionManagement />}
+            {adminView === "candidates" && <CandidateManagement />}
+            {adminView === "results" && <div>Results view coming soon...</div>}
+          </div>
         ) : (
           <>
             {/* Student Dashboard Content */}
@@ -189,6 +217,9 @@ export const Dashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Voting Section */}
+        <VotingInterface />
 
         {/* Elections Section */}
         <Card>
