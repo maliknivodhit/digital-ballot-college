@@ -38,6 +38,15 @@ export const LoginPortal = () => {
     confirmPassword: "",
   });
 
+  // Admin registration form
+  const [adminRegisterForm, setAdminRegisterForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    passcode: "",
+  });
+
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -183,6 +192,79 @@ export const LoginPortal = () => {
     setLoading(false);
   };
 
+  const handleAdminRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate passcode
+    if (adminRegisterForm.passcode !== "654321") {
+      toast({
+        title: "Invalid Passcode",
+        description: "The admin passcode is incorrect",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (adminRegisterForm.password !== adminRegisterForm.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (adminRegisterForm.password.length < 6) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Create the admin account in Supabase
+      const { error } = await supabase.auth.signUp({
+        email: adminRegisterForm.email,
+        password: adminRegisterForm.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: adminRegisterForm.fullName,
+            role: "admin",
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Admin Registration Successful!",
+        description: "Please check your email to verify your account, then you can login as admin!",
+      });
+
+      // Reset form
+      setAdminRegisterForm({
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        passcode: "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Registration Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+
+    setLoading(false);
+  };
+
   if (user) {
     return null; // User is already logged in, will be redirected by App.tsx
   }
@@ -204,7 +286,7 @@ export const LoginPortal = () => {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="admin" className="flex items-center gap-1">
                   <Shield className="h-4 w-4" />
                   Admin
@@ -216,6 +298,10 @@ export const LoginPortal = () => {
                 <TabsTrigger value="register" className="flex items-center gap-1">
                   <UserPlus className="h-4 w-4" />
                   Register
+                </TabsTrigger>
+                <TabsTrigger value="admin-register" className="flex items-center gap-1 text-xs">
+                  <Shield className="h-4 w-4" />
+                  Admin+
                 </TabsTrigger>
               </TabsList>
 
@@ -362,6 +448,72 @@ export const LoginPortal = () => {
                   <Button type="submit" className="w-full" disabled={loading}>
                     <UserPlus className="mr-2 h-4 w-4" />
                     {loading ? "Registering..." : "Register as Voter"}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="admin-register">
+                <form onSubmit={handleAdminRegister} className="space-y-4">
+                  <div>
+                    <Label htmlFor="admin-passcode">Admin Passcode</Label>
+                    <Input
+                      id="admin-passcode"
+                      type="password"
+                      value={adminRegisterForm.passcode}
+                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, passcode: e.target.value })}
+                      placeholder="Enter admin passcode"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Contact existing admin for the passcode
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="admin-full-name">Full Name</Label>
+                    <Input
+                      id="admin-full-name"
+                      value={adminRegisterForm.fullName}
+                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, fullName: e.target.value })}
+                      placeholder="Enter your full name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="admin-email">Email</Label>
+                    <Input
+                      id="admin-email"
+                      type="email"
+                      value={adminRegisterForm.email}
+                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, email: e.target.value })}
+                      placeholder="Enter your admin email"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="admin-password">Create Password</Label>
+                    <Input
+                      id="admin-password"
+                      type="password"
+                      value={adminRegisterForm.password}
+                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, password: e.target.value })}
+                      placeholder="Create a secure password"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="admin-confirm-password">Confirm Password</Label>
+                    <Input
+                      id="admin-confirm-password"
+                      type="password"
+                      value={adminRegisterForm.confirmPassword}
+                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, confirmPassword: e.target.value })}
+                      placeholder="Confirm your password"
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    {loading ? "Creating Admin..." : "Create Admin Account"}
                   </Button>
                 </form>
               </TabsContent>
