@@ -98,20 +98,32 @@ export const VotingInterface = () => {
     try {
       const { data, error } = await supabase
         .from("candidates")
-        .select(`
-          *,
-          profiles:user_id (
-            full_name,
-            student_id,
-            department
-          )
-        `)
+        .select("*")
         .eq("election_id", electionId)
         .eq("is_approved", true)
         .order("position");
 
+      if (!error && data) {
+        // Fetch profiles separately for each candidate
+        const candidatesWithProfiles = await Promise.all(
+          data.map(async (candidate) => {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name, student_id, department")
+              .eq("user_id", candidate.user_id)
+              .single();
+            
+            return {
+              ...candidate,
+              profiles: profile,
+              party_name: (candidate as any).party_name || "Independent"
+            } as unknown as Candidate;
+          })
+        );
+        setCandidates(candidatesWithProfiles);
+      }
+
       if (error) throw error;
-      setCandidates(data || []);
     } catch (error) {
       console.error("Error fetching candidates:", error);
       toast({

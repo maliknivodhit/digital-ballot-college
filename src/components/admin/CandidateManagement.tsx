@@ -93,18 +93,30 @@ export const CandidateManagement = () => {
       // Fetch candidates with profiles
       const { data: candidatesData, error: candidatesError } = await supabase
         .from("candidates")
-        .select(`
-          *,
-          profiles:user_id (
-            full_name,
-            student_id,
-            department
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
+      if (!candidatesError && candidatesData) {
+        // Fetch profiles separately for each candidate
+        const candidatesWithProfiles = await Promise.all(
+          candidatesData.map(async (candidate) => {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name, student_id, department")
+              .eq("user_id", candidate.user_id)
+              .single();
+            
+            return {
+              ...candidate,
+              profiles: profile,
+              party_name: (candidate as any).party_name || "Independent"
+            } as unknown as Candidate;
+          })
+        );
+        setCandidates(candidatesWithProfiles);
+      }
+
       if (candidatesError) throw candidatesError;
-      setCandidates(candidatesData || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
