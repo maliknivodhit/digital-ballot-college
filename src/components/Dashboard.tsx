@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ElectionManagement } from "./admin/ElectionManagement";
 import { CandidateManagement } from "./admin/CandidateManagement";
+import { ElectionResults } from "./admin/ElectionResults";
 import { VotingInterface } from "./voting/VotingInterface";
 
 interface Election {
@@ -183,7 +184,7 @@ export const Dashboard = () => {
             
             {adminView === "elections" && <ElectionManagement />}
             {adminView === "candidates" && <CandidateManagement />}
-            {adminView === "results" && <div>Results view coming soon...</div>}
+            {adminView === "results" && <ElectionResults />}
           </div>
         ) : (
           <>
