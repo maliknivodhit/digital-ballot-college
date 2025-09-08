@@ -4,65 +4,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, User, UserPlus, LogIn } from "lucide-react";
+import { Shield, User, UserPlus, LogIn, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { Switch } from "@/components/ui/switch";
 
 export const LoginPortal = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("voter");
+  const [isRegister, setIsRegister] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Admin login form
-  const [adminForm, setAdminForm] = useState({
+  const [formData, setFormData] = useState({
     email: "",
     password: "",
-  });
-
-  // Voter login form
-  const [voterForm, setVoterForm] = useState({
-    email: "",
-    password: "",
-  });
-
-  // Registration form
-  const [registerForm, setRegisterForm] = useState({
+    confirmPassword: "",
     fullName: "",
-    email: "",
     studentId: "",
     department: "",
     yearOfStudy: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  // Admin registration form
-  const [adminRegisterForm, setAdminRegisterForm] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
     passcode: "",
   });
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Check hardcoded admin credentials
-    if (adminForm.email === "nivodhitmalik@gmail.com" && adminForm.password === "Malik#201") {
-      try {
+    try {
+      if (isAdmin && formData.email === "nivodhitmalik@gmail.com" && formData.password === "Malik#201") {
+        // Special hardcoded admin login
         const { error } = await supabase.auth.signInWithPassword({
-          email: adminForm.email,
-          password: "admin123", // Use a standard password for Supabase auth
+          email: formData.email,
+          password: "admin123",
         });
 
         if (error) {
-          // If admin doesn't exist in Supabase, create them
+          // Create admin account if it doesn't exist
           const { error: signUpError } = await supabase.auth.signUp({
-            email: adminForm.email,
+            email: formData.email,
             password: "admin123",
             options: {
               emailRedirectTo: `${window.location.origin}/`,
@@ -81,40 +63,20 @@ export const LoginPortal = () => {
             description: "Welcome Admin!",
           });
         }
-      } catch (error: any) {
+      } else {
+        // Regular login
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+
         toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
+          title: "Login Successful!",
+          description: `Welcome ${isAdmin ? "Admin" : "Student"}!`,
         });
       }
-    } else {
-      toast({
-        title: "Invalid Credentials",
-        description: "Admin email or password is incorrect",
-        variant: "destructive",
-      });
-    }
-
-    setLoading(false);
-  };
-
-  const handleVoterLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: voterForm.email,
-        password: voterForm.password,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Login Successful!",
-        description: "Welcome to the voting portal",
-      });
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -129,7 +91,7 @@ export const LoginPortal = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (registerForm.password !== registerForm.confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Password Mismatch",
         description: "Passwords do not match",
@@ -138,7 +100,7 @@ export const LoginPortal = () => {
       return;
     }
 
-    if (registerForm.password.length < 6) {
+    if (formData.password.length < 6) {
       toast({
         title: "Weak Password",
         description: "Password must be at least 6 characters",
@@ -147,56 +109,7 @@ export const LoginPortal = () => {
       return;
     }
 
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signUp({
-        email: registerForm.email,
-        password: registerForm.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            full_name: registerForm.fullName,
-            student_id: registerForm.studentId,
-            department: registerForm.department,
-            year_of_study: parseInt(registerForm.yearOfStudy),
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Registration Successful!",
-        description: "Please check your email to verify your account, then you can login and vote!",
-      });
-
-      // Reset form
-      setRegisterForm({
-        fullName: "",
-        email: "",
-        studentId: "",
-        department: "",
-        yearOfStudy: "",
-        password: "",
-        confirmPassword: "",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Registration Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-
-    setLoading(false);
-  };
-
-  const handleAdminRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validate passcode
-    if (adminRegisterForm.passcode !== "654321") {
+    if (isAdmin && formData.passcode !== "654321") {
       toast({
         title: "Invalid Passcode",
         description: "The admin passcode is incorrect",
@@ -205,53 +118,46 @@ export const LoginPortal = () => {
       return;
     }
 
-    if (adminRegisterForm.password !== adminRegisterForm.confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (adminRegisterForm.password.length < 6) {
-      toast({
-        title: "Weak Password",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // Create the admin account in Supabase
-      const { error } = await supabase.auth.signUp({
-        email: adminRegisterForm.email,
-        password: adminRegisterForm.password,
+      const signUpData = {
+        email: formData.email,
+        password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            full_name: adminRegisterForm.fullName,
-            role: "admin",
-          },
+          data: isAdmin 
+            ? {
+                full_name: formData.fullName,
+                role: "admin",
+              }
+            : {
+                full_name: formData.fullName,
+                student_id: formData.studentId,
+                department: formData.department,
+                year_of_study: parseInt(formData.yearOfStudy),
+              },
         },
-      });
+      };
+
+      const { error } = await supabase.auth.signUp(signUpData);
 
       if (error) throw error;
 
       toast({
-        title: "Admin Registration Successful!",
-        description: "Please check your email to verify your account, then you can login as admin!",
+        title: "Registration Successful!",
+        description: "Please check your email to verify your account, then you can login!",
       });
 
       // Reset form
-      setAdminRegisterForm({
-        fullName: "",
+      setFormData({
         email: "",
         password: "",
         confirmPassword: "",
+        fullName: "",
+        studentId: "",
+        department: "",
+        yearOfStudy: "",
         passcode: "",
       });
     } catch (error: any) {
@@ -279,241 +185,226 @@ export const LoginPortal = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Welcome to Voting Portal</CardTitle>
+            <CardTitle className="text-center">
+              {isRegister ? "Create Account" : "Sign In"}
+            </CardTitle>
             <CardDescription className="text-center">
-              Select your role to continue
+              {isRegister ? "Register to participate in elections" : "Access your voting portal"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="admin" className="flex items-center gap-1">
-                  <Shield className="h-4 w-4" />
-                  Admin
+          <CardContent className="space-y-6">
+            {/* Login/Register Toggle */}
+            <Tabs value={isRegister ? "register" : "login"} onValueChange={(value) => setIsRegister(value === "register")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login" className="flex items-center gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Sign In
                 </TabsTrigger>
-                <TabsTrigger value="voter" className="flex items-center gap-1">
-                  <User className="h-4 w-4" />
-                  Voter
-                </TabsTrigger>
-                <TabsTrigger value="register" className="flex items-center gap-1">
+                <TabsTrigger value="register" className="flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
                   Register
                 </TabsTrigger>
-                <TabsTrigger value="admin-register" className="flex items-center gap-1 text-xs">
-                  <Shield className="h-4 w-4" />
-                  Admin+
-                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="admin">
-                <form onSubmit={handleAdminLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="admin-email">Admin Email</Label>
-                    <Input
-                      id="admin-email"
-                      type="email"
-                      value={adminForm.email}
-                      onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                      placeholder="Enter admin email"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="admin-password">Password</Label>
-                    <Input
-                      id="admin-password"
-                      type="password"
-                      value={adminForm.password}
-                      onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
-                      placeholder="Enter password"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    {loading ? "Logging in..." : "Admin Login"}
-                  </Button>
-                </form>
-              </TabsContent>
+              <TabsContent value="login">
+                {/* Admin/Student Toggle for Login */}
+                <div className="flex items-center justify-center space-x-3 mb-4">
+                  <Label htmlFor="admin-toggle" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Student
+                  </Label>
+                  <Switch
+                    id="admin-toggle"
+                    checked={isAdmin}
+                    onCheckedChange={setIsAdmin}
+                  />
+                  <Label htmlFor="admin-toggle" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Admin
+                  </Label>
+                </div>
 
-              <TabsContent value="voter">
-                <form onSubmit={handleVoterLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="voter-email">Student Email</Label>
-                    <Input
-                      id="voter-email"
-                      type="email"
-                      value={voterForm.email}
-                      onChange={(e) => setVoterForm({ ...voterForm, email: e.target.value })}
-                      placeholder="Enter your student email"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="voter-password">Password</Label>
-                    <Input
-                      id="voter-password"
-                      type="password"
-                      value={voterForm.password}
-                      onChange={(e) => setVoterForm({ ...voterForm, password: e.target.value })}
-                      placeholder="Enter your password"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    {loading ? "Logging in..." : "Voter Login"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="register">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div>
-                    <Label htmlFor="full-name">Full Name</Label>
-                    <Input
-                      id="full-name"
-                      value={registerForm.fullName}
-                      onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })}
-                      placeholder="Enter your full name"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="student-id">Student ID</Label>
-                    <Input
-                      id="student-id"
-                      value={registerForm.studentId}
-                      onChange={(e) => setRegisterForm({ ...registerForm, studentId: e.target.value })}
-                      placeholder="Enter your student ID"
-                      required
-                    />
-                  </div>
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
-                      value={registerForm.email}
-                      onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                      placeholder="Enter your email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder={isAdmin ? "Enter admin email" : "Enter your student email"}
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="department">Department</Label>
-                    <Input
-                      id="department"
-                      value={registerForm.department}
-                      onChange={(e) => setRegisterForm({ ...registerForm, department: e.target.value })}
-                      placeholder="e.g., Computer Science"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="year">Year of Study</Label>
-                    <Input
-                      id="year"
-                      type="number"
-                      min="1"
-                      max="5"
-                      value={registerForm.yearOfStudy}
-                      onChange={(e) => setRegisterForm({ ...registerForm, yearOfStudy: e.target.value })}
-                      placeholder="1-5"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">Create Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={registerForm.password}
-                      onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                      placeholder="Create a secure password"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={registerForm.confirmPassword}
-                      onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
-                      placeholder="Confirm your password"
-                      required
-                    />
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    {loading ? "Registering..." : "Register as Voter"}
+                    <LogIn className="mr-2 h-4 w-4" />
+                    {loading ? "Signing in..." : `Sign in as ${isAdmin ? "Admin" : "Student"}`}
                   </Button>
                 </form>
               </TabsContent>
 
-              <TabsContent value="admin-register">
-                <form onSubmit={handleAdminRegister} className="space-y-4">
+              <TabsContent value="register">
+                {/* Admin/Student Toggle for Registration */}
+                <div className="flex items-center justify-center space-x-3 mb-4">
+                  <Label htmlFor="admin-register-toggle" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Student
+                  </Label>
+                  <Switch
+                    id="admin-register-toggle"
+                    checked={isAdmin}
+                    onCheckedChange={setIsAdmin}
+                  />
+                  <Label htmlFor="admin-register-toggle" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Admin
+                  </Label>
+                </div>
+
+                <form onSubmit={handleRegister} className="space-y-4">
+                  {isAdmin && (
+                    <div>
+                      <Label htmlFor="passcode">Admin Passcode</Label>
+                      <Input
+                        id="passcode"
+                        type="password"
+                        value={formData.passcode}
+                        onChange={(e) => setFormData({ ...formData, passcode: e.target.value })}
+                        placeholder="Enter admin passcode (654321)"
+                        required
+                      />
+                    </div>
+                  )}
+                  
                   <div>
-                    <Label htmlFor="admin-passcode">Admin Passcode</Label>
+                    <Label htmlFor="fullName">Full Name</Label>
                     <Input
-                      id="admin-passcode"
-                      type="password"
-                      value={adminRegisterForm.passcode}
-                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, passcode: e.target.value })}
-                      placeholder="Enter admin passcode"
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Contact existing admin for the passcode
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="admin-full-name">Full Name</Label>
-                    <Input
-                      id="admin-full-name"
-                      value={adminRegisterForm.fullName}
-                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, fullName: e.target.value })}
+                      id="fullName"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                       placeholder="Enter your full name"
                       required
                     />
                   </div>
+
+                  {!isAdmin && (
+                    <>
+                      <div>
+                        <Label htmlFor="studentId">Student ID</Label>
+                        <Input
+                          id="studentId"
+                          value={formData.studentId}
+                          onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                          placeholder="Enter your student ID"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="department">Department</Label>
+                        <Input
+                          id="department"
+                          value={formData.department}
+                          onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                          placeholder="e.g., Computer Science"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="yearOfStudy">Year of Study</Label>
+                        <Input
+                          id="yearOfStudy"
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={formData.yearOfStudy}
+                          onChange={(e) => setFormData({ ...formData, yearOfStudy: e.target.value })}
+                          placeholder="1-5"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
                   <div>
-                    <Label htmlFor="admin-email">Email</Label>
+                    <Label htmlFor="registerEmail">Email</Label>
                     <Input
-                      id="admin-email"
+                      id="registerEmail"
                       type="email"
-                      value={adminRegisterForm.email}
-                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, email: e.target.value })}
-                      placeholder="Enter your admin email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="Enter your email"
                       required
                     />
                   </div>
+
                   <div>
-                    <Label htmlFor="admin-password">Create Password</Label>
-                    <Input
-                      id="admin-password"
-                      type="password"
-                      value={adminRegisterForm.password}
-                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, password: e.target.value })}
-                      placeholder="Create a secure password"
-                      required
-                    />
+                    <Label htmlFor="registerPassword">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="registerPassword"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Create a secure password (min 6 chars)"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
+
                   <div>
-                    <Label htmlFor="admin-confirm-password">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <Input
-                      id="admin-confirm-password"
-                      type="password"
-                      value={adminRegisterForm.confirmPassword}
-                      onChange={(e) => setAdminRegisterForm({ ...adminRegisterForm, confirmPassword: e.target.value })}
+                      id="confirmPassword"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                       placeholder="Confirm your password"
                       required
                     />
                   </div>
+
                   <Button type="submit" className="w-full" disabled={loading}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    {loading ? "Creating Admin..." : "Create Admin Account"}
+                    {isAdmin ? <Shield className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                    {loading ? "Creating account..." : `Register as ${isAdmin ? "Admin" : "Student"}`}
                   </Button>
                 </form>
               </TabsContent>
