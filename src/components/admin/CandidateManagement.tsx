@@ -401,7 +401,7 @@ export const CandidateManagement = () => {
             <SelectValue placeholder="All Elections" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Elections</SelectItem>
+            <SelectItem value="all">All Elections</SelectItem>
             {elections.map((election) => (
               <SelectItem key={election.id} value={election.id}>
                 {election.title}
