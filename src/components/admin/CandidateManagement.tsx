@@ -65,11 +65,7 @@ export const CandidateManagement = () => {
   
   const [formData, setFormData] = useState({
     candidateName: "",
-    studentId: "",
-    department: "",
-    position: "",
     partyName: "",
-    manifesto: "",
     electionId: "",
   });
 
@@ -130,7 +126,7 @@ export const CandidateManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.candidateName || !formData.studentId || !formData.electionId || !formData.position) {
+    if (!formData.candidateName || !formData.electionId) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -142,61 +138,29 @@ export const CandidateManagement = () => {
     try {
       setLoading(true);
 
-      // First, create or find the user profile
-      let userId;
-      
-      // Check if profile exists
-      const { data: existingProfile } = await supabase
+      // Generate a unique user ID for this candidate
+      const userId = crypto.randomUUID();
+
+      // Create a basic profile entry for the candidate
+      const { error: profileError } = await supabase
         .from("profiles")
-        .select("user_id")
-        .eq("student_id", formData.studentId)
-        .single();
+        .insert([{
+          user_id: userId,
+          full_name: formData.candidateName,
+          student_id: `CAND_${Date.now()}`, // Generate a unique student ID
+          department: "Not Specified",
+          year_of_study: 1,
+          is_eligible: true,
+        }]);
 
-      if (existingProfile) {
-        userId = existingProfile.user_id;
-      } else {
-        // Create a temporary user entry for the candidate
-        const tempEmail = `${formData.studentId}@temp.college.edu`;
-        const { data: authUser, error: authError } = await supabase.auth.signUp({
-          email: tempEmail,
-          password: "temp123456", // Temporary password
-          options: {
-            data: {
-              full_name: formData.candidateName,
-              student_id: formData.studentId,
-              department: formData.department,
-              year_of_study: 1,
-            },
-          },
-        });
-
-        if (authError) {
-          // If user already exists, try to find them
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("user_id")
-            .eq("student_id", formData.studentId);
-          
-          if (profiles && profiles.length > 0) {
-            userId = profiles[0].user_id;
-          } else {
-            throw authError;
-          }
-        } else {
-          userId = authUser.user?.id;
-        }
-      }
-
-      if (!userId) {
-        throw new Error("Could not create or find user");
-      }
+      if (profileError) throw profileError;
 
       const candidateData = {
         user_id: userId,
         election_id: formData.electionId,
-        position: formData.position,
+        position: "Candidate", // Default position
         party_name: formData.partyName || "Independent",
-        manifesto: formData.manifesto || "",
+        manifesto: "", // Empty manifesto
         is_approved: true, // Auto-approve for admin created candidates
       };
 
@@ -231,11 +195,7 @@ export const CandidateManagement = () => {
       setEditingCandidate(null);
       setFormData({
         candidateName: "",
-        studentId: "",
-        department: "",
-        position: "",
         partyName: "",
-        manifesto: "",
         electionId: "",
       });
       fetchData();
@@ -316,53 +276,12 @@ export const CandidateManagement = () => {
           </div>
 
           <div>
-            <Label htmlFor="studentId">Student ID *</Label>
-            <Input
-              id="studentId"
-              value={formData.studentId}
-              onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-              placeholder="Enter student ID"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="department">Department</Label>
-            <Input
-              id="department"
-              value={formData.department}
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              placeholder="e.g., Computer Science"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="position">Position *</Label>
-            <Input
-              id="position"
-              value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-              placeholder="e.g., President, Vice President"
-            />
-          </div>
-
-          <div>
             <Label htmlFor="partyName">Party/Group Name</Label>
             <Input
               id="partyName"
               value={formData.partyName}
               onChange={(e) => setFormData({ ...formData, partyName: e.target.value })}
               placeholder="Optional party affiliation"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="manifesto">Manifesto/Slogan</Label>
-            <Textarea
-              id="manifesto"
-              value={formData.manifesto}
-              onChange={(e) => setFormData({ ...formData, manifesto: e.target.value })}
-              placeholder="Candidate's manifesto or campaign slogan"
-              rows={3}
             />
           </div>
 
@@ -471,11 +390,7 @@ export const CandidateManagement = () => {
                         setEditingCandidate(candidate);
                         setFormData({
                           candidateName: candidate.profiles?.full_name || "",
-                          studentId: candidate.profiles?.student_id || "",
-                          department: candidate.profiles?.department || "",
-                          position: candidate.position,
                           partyName: candidate.party_name,
-                          manifesto: candidate.manifesto || "",
                           electionId: candidate.election_id,
                         });
                         setShowForm(true);
