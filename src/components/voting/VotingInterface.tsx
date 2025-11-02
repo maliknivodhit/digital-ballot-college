@@ -29,15 +29,13 @@ interface Election {
 
 interface Candidate {
   id: string;
-  user_id: string;
+  user_id?: string;
   position: string;
   party_name: string;
   manifesto: string;
-  profiles?: {
-    full_name: string;
-    student_id: string;
-    department: string;
-  };
+  full_name: string;
+  student_id: string;
+  department: string;
 }
 
 interface VoteData {
@@ -103,27 +101,8 @@ export const VotingInterface = () => {
         .eq("is_approved", true)
         .order("position");
 
-      if (!error && data) {
-        // Fetch profiles separately for each candidate
-        const candidatesWithProfiles = await Promise.all(
-          data.map(async (candidate) => {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("full_name, student_id, department")
-              .eq("user_id", candidate.user_id)
-              .single();
-            
-            return {
-              ...candidate,
-              profiles: profile,
-              party_name: (candidate as any).party_name || "Independent"
-            } as unknown as Candidate;
-          })
-        );
-        setCandidates(candidatesWithProfiles);
-      }
-
       if (error) throw error;
+      setCandidates(data || []);
     } catch (error) {
       console.error("Error fetching candidates:", error);
       toast({
@@ -332,14 +311,14 @@ export const VotingInterface = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <Users className="h-4 w-4" />
-                              <h5 className="font-semibold">{candidate.profiles?.full_name}</h5>
+                              <h5 className="font-semibold">{candidate.full_name}</h5>
                               {selectedCandidates[position] === candidate.id && (
                                 <CheckCircle className="h-4 w-4 text-green-500" />
                               )}
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p><strong>Student ID:</strong> {candidate.profiles?.student_id}</p>
-                              <p><strong>Department:</strong> {candidate.profiles?.department}</p>
+                              <p><strong>Student ID:</strong> {candidate.student_id}</p>
+                              <p><strong>Department:</strong> {candidate.department}</p>
                               <p><strong>Party:</strong> {candidate.party_name}</p>
                               {candidate.manifesto && (
                                 <p><strong>Manifesto:</strong> {candidate.manifesto}</p>
@@ -376,7 +355,7 @@ export const VotingInterface = () => {
                           const candidate = candidates.find(c => c.id === candidateId);
                           return (
                             <div key={position} className="text-sm">
-                              <strong>{position}:</strong> {candidate?.profiles?.full_name}
+                              <strong>{position}:</strong> {candidate?.full_name}
                             </div>
                           );
                         })}

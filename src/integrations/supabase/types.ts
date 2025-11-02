@@ -17,36 +17,45 @@ export type Database = {
       candidates: {
         Row: {
           created_at: string
+          department: string | null
           election_id: string
+          full_name: string | null
           id: string
           is_approved: boolean
           manifesto: string | null
           party_name: string
           position: string
+          student_id: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
+          department?: string | null
           election_id: string
+          full_name?: string | null
           id?: string
           is_approved?: boolean
           manifesto?: string | null
           party_name?: string
           position: string
+          student_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
+          department?: string | null
           election_id?: string
+          full_name?: string | null
           id?: string
           is_approved?: boolean
           manifesto?: string | null
           party_name?: string
           position?: string
+          student_id?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

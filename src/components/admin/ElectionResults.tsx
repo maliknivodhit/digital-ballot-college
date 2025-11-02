@@ -20,13 +20,11 @@ interface Election {
 interface Candidate {
   id: string;
   position: string;
-  user_id: string;
+  user_id?: string;
   party_name: string;
   manifesto: string;
-  profiles: {
-    full_name: string;
-    department: string;
-  } | null;
+  full_name: string;
+  department: string;
 }
 
 interface VoteResult {
@@ -84,22 +82,6 @@ export const ElectionResults = () => {
 
       if (candidatesError) throw candidatesError;
 
-      // Fetch profiles separately for each candidate
-      const candidatesWithProfiles = await Promise.all(
-        (candidates || []).map(async (candidate) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, department")
-            .eq("user_id", candidate.user_id)
-            .maybeSingle();
-          
-          return {
-            ...candidate,
-            profiles: profile,
-          };
-        })
-      );
-
       // Get vote counts for each candidate
       const { data: votes, error: votesError } = await supabase
         .from("votes")
@@ -118,14 +100,14 @@ export const ElectionResults = () => {
       setTotalVotes(totalVoteCount);
 
       // Prepare results data
-      const resultsData: VoteResult[] = candidatesWithProfiles.map((candidate) => {
+      const resultsData: VoteResult[] = (candidates || []).map((candidate) => {
         const voteCount = voteCounts[candidate.id] || 0;
         const percentage = totalVoteCount > 0 ? (voteCount / totalVoteCount) * 100 : 0;
 
         return {
           candidate_id: candidate.id,
-          candidate_name: candidate.profiles?.full_name || "Unknown",
-          department: candidate.profiles?.department || "Unknown",
+          candidate_name: candidate.full_name || "Unknown",
+          department: candidate.department || "Unknown",
           party_name: candidate.party_name,
           position: candidate.position,
           vote_count: voteCount,

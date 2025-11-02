@@ -40,18 +40,16 @@ interface Election {
 
 interface Candidate {
   id: string;
-  user_id: string;
+  user_id?: string;
   election_id: string;
   position: string;
   party_name: string;
   manifesto: string;
   is_approved: boolean;
   created_at: string;
-  profiles?: {
-    full_name: string;
-    student_id: string;
-    department: string;
-  };
+  full_name: string;
+  student_id: string;
+  department: string;
 }
 
 export const CandidateManagement = () => {
@@ -65,6 +63,9 @@ export const CandidateManagement = () => {
   
   const [formData, setFormData] = useState({
     candidateName: "",
+    studentId: "",
+    department: "",
+    position: "",
     partyName: "",
     electionId: "",
   });
@@ -86,33 +87,14 @@ export const CandidateManagement = () => {
       if (electionsError) throw electionsError;
       setElections(electionsData || []);
 
-      // Fetch candidates with profiles
+      // Fetch candidates
       const { data: candidatesData, error: candidatesError } = await supabase
         .from("candidates")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (!candidatesError && candidatesData) {
-        // Fetch profiles separately for each candidate
-        const candidatesWithProfiles = await Promise.all(
-          candidatesData.map(async (candidate) => {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("full_name, student_id, department")
-              .eq("user_id", candidate.user_id)
-              .single();
-            
-            return {
-              ...candidate,
-              profiles: profile,
-              party_name: (candidate as any).party_name || "Independent"
-            } as unknown as Candidate;
-          })
-        );
-        setCandidates(candidatesWithProfiles);
-      }
-
       if (candidatesError) throw candidatesError;
+      setCandidates(candidatesData || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -126,7 +108,7 @@ export const CandidateManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.candidateName || !formData.electionId) {
+    if (!formData.candidateName || !formData.electionId || !formData.position) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -138,34 +120,18 @@ export const CandidateManagement = () => {
     try {
       setLoading(true);
 
-      // Generate a unique user ID for this candidate
-      const userId = crypto.randomUUID();
-
-      // Create a basic profile entry for the candidate
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([{
-          user_id: userId,
-          full_name: formData.candidateName,
-          student_id: `CAND_${Date.now()}`, // Generate a unique student ID
-          department: "Not Specified",
-          year_of_study: 1,
-          is_eligible: true,
-        }]);
-
-      if (profileError) throw profileError;
-
       const candidateData = {
-        user_id: userId,
         election_id: formData.electionId,
-        position: "Candidate", // Default position
+        position: formData.position,
         party_name: formData.partyName || "Independent",
-        manifesto: "", // Empty manifesto
-        is_approved: true, // Auto-approve for admin created candidates
+        full_name: formData.candidateName,
+        student_id: formData.studentId || `CAND_${Date.now()}`,
+        department: formData.department || "Not Specified",
+        manifesto: "",
+        is_approved: true,
       };
 
       if (editingCandidate?.id) {
-        // Update existing candidate
         const { error } = await supabase
           .from("candidates")
           .update(candidateData)
@@ -178,7 +144,6 @@ export const CandidateManagement = () => {
           description: "Candidate updated successfully",
         });
       } else {
-        // Create new candidate
         const { error } = await supabase
           .from("candidates")
           .insert([candidateData]);
@@ -195,6 +160,9 @@ export const CandidateManagement = () => {
       setEditingCandidate(null);
       setFormData({
         candidateName: "",
+        studentId: "",
+        department: "",
+        position: "",
         partyName: "",
         electionId: "",
       });
@@ -272,6 +240,36 @@ export const CandidateManagement = () => {
               value={formData.candidateName}
               onChange={(e) => setFormData({ ...formData, candidateName: e.target.value })}
               placeholder="Enter candidate full name"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="studentId">Student ID</Label>
+            <Input
+              id="studentId"
+              value={formData.studentId}
+              onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+              placeholder="Optional student ID"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="department">Department</Label>
+            <Input
+              id="department"
+              value={formData.department}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              placeholder="Department name"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="position">Position *</Label>
+            <Input
+              id="position"
+              value={formData.position}
+              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              placeholder="e.g., President, Secretary, etc."
             />
           </div>
 
@@ -362,7 +360,7 @@ export const CandidateManagement = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <User className="h-5 w-5" />
                         <CardTitle className="text-lg">
-                          {candidate.profiles?.full_name || "Unknown"}
+                          {candidate.full_name || "Unknown"}
                         </CardTitle>
                         <Badge variant={candidate.is_approved ? "default" : "secondary"}>
                           {candidate.is_approved ? "Approved" : "Pending"}
@@ -371,8 +369,8 @@ export const CandidateManagement = () => {
                       <div className="text-sm text-muted-foreground space-y-1">
                         <p><strong>Election:</strong> {election?.title || "Unknown"}</p>
                         <p><strong>Position:</strong> {candidate.position}</p>
-                        <p><strong>Student ID:</strong> {candidate.profiles?.student_id}</p>
-                        <p><strong>Department:</strong> {candidate.profiles?.department}</p>
+                        <p><strong>Student ID:</strong> {candidate.student_id}</p>
+                        <p><strong>Department:</strong> {candidate.department}</p>
                         <p><strong>Party:</strong> {candidate.party_name}</p>
                         {candidate.manifesto && (
                           <p><strong>Manifesto:</strong> {candidate.manifesto}</p>
@@ -389,7 +387,10 @@ export const CandidateManagement = () => {
                       onClick={() => {
                         setEditingCandidate(candidate);
                         setFormData({
-                          candidateName: candidate.profiles?.full_name || "",
+                          candidateName: candidate.full_name || "",
+                          studentId: candidate.student_id || "",
+                          department: candidate.department || "",
+                          position: candidate.position || "",
                           partyName: candidate.party_name,
                           electionId: candidate.election_id,
                         });
@@ -411,7 +412,7 @@ export const CandidateManagement = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Remove Candidate</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to remove "{candidate.profiles?.full_name}" from this election? 
+                            Are you sure you want to remove "{candidate.full_name}" from this election? 
                             This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
